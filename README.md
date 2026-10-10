@@ -52,6 +52,7 @@ python3 main.py
 | J                  | open the journal (every challenge, odd job, star and gold coin)        |
 | Esc                | close a dialog, or go back to the title screen                         |
 | Ctrl/⌘ + Enter     | run your code in a challenge                                           |
+| Mouse              | your farmer's eyes follow the cursor around the valley                 |
 
 Above each villager's head:
 

@@ -22,6 +22,8 @@ MOVE_KEYS = {"left": "left", "a": "left", "right": "right", "d": "right",
 ACTION_KEYS = {"e", "space", "return", "kp_enter"}
 WALK_SPEED = 5.0                # screen pixels per tick
 REACH = 1.45 * TILE_PX          # how close you must be to talk to someone
+EYE_HEIGHT = SPRITE_H - 8 * SCALE   # from the feet up to the player's eyes
+GAZE_DEADZONE = 18              # cursor this close to the eyes: look straight ahead
 
 
 def lighter(color):
@@ -265,6 +267,7 @@ class WorldScreen(WorldView):
         self.banner_until = 0
         self.zone = None
         self._sprite_key = None
+        self.mouse = None               # cursor position inside the window, if it's over the valley
 
         self.player = self.create_image(0, 0, anchor="s")
         self.robot = self.create_image(0, 0, anchor="s")
@@ -275,6 +278,8 @@ class WorldScreen(WorldView):
         self.bind("<KeyPress>", self._key_down)
         self.bind("<KeyRelease>", self._key_up)
         self.bind("<Button-1>", lambda e: self.focus_set())
+        self.bind("<Motion>", lambda e: setattr(self, "mouse", (e.x, e.y)))
+        self.bind("<Leave>", lambda e: setattr(self, "mouse", None))
         self.after(60, self.focus_set)
 
         message = app.pending_message
@@ -345,6 +350,7 @@ class WorldScreen(WorldView):
         self.animate_world()
         if not (self.dialog or self.journal):
             self._walk()
+        self._update_player_sprite()
         self._follow_robot()
         if self.t % 5 == 0:
             self._face_villagers()
@@ -373,7 +379,6 @@ class WorldScreen(WorldView):
                 self.trail.append((self.px, self.py))
         else:
             self.walk_t, self.frame = 0, 0
-        self._update_player_sprite()
 
         cx, cy = self.cam
         tx, ty = self.px - W / 2, self.py - H / 2 + 20
@@ -411,8 +416,23 @@ class WorldScreen(WorldView):
             moved = True
         return moved
 
+    def _gaze(self):
+        """Which way (dx, dy), each -1/0/1, the player's eyes should look to follow the cursor."""
+        if self.mouse is None:
+            return (0, 0)
+        dx = self.cam[0] + self.mouse[0] - self.px
+        dy = self.cam[1] + self.mouse[1] - (self.py - EYE_HEIGHT)
+        distance = math.hypot(dx, dy)
+        if distance < GAZE_DEADZONE:
+            return (0, 0)
+
+        def step(v):
+            return 0 if abs(v) < 0.38 else (1 if v > 0 else -1)   # 0.38 ~ sin(22.5deg): 8 directions
+
+        return (step(dx / distance), step(dy / distance))
+
     def _update_player_sprite(self, force=False):
-        key = (self.facing, self.frame)
+        key = (self.facing, self.frame, self._gaze())
         if force or key != self._sprite_key:
             self._sprite_key = key
             self.itemconfigure(self.player, image=self.art.character("player", PLAYER_LOOK, *key))

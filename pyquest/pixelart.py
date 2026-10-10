@@ -575,10 +575,14 @@ SKINS = ["#f6cfa4", "#e8b48a", "#c98d5f", "#9a6440", "#704428"]
 BLUSH = "#f19a8f"
 
 
-def character(look, facing="down", frame=0):
-    """A 16x24 villager. look: skin, hair, shirt, pants, shoes, style (short|long|spiky), hat."""
+def character(look, facing="down", frame=0, gaze=(0, 0)):
+    """A 16x24 villager. look: skin, hair, shirt, pants, shoes, style (short|long|spiky), hat.
+
+    gaze (dx, dy), each -1, 0 or 1, nudges the eyes one pixel towards where they're looking.
+    """
     if facing == "right":
-        return character(look, "left", frame).mirrored()
+        return character(look, "left", frame, (-gaze[0], gaze[1])).mirrored()
+    gx, gy = gaze
     skin, hair, shirt, pants = look["skin"], look["hair"], look["shirt"], look["pants"]
     shoes = look.get("shoes", "#4a2f1b")
     style, hat = look.get("style", "short"), look.get("hat")
@@ -602,10 +606,10 @@ def character(look, facing="down", frame=0):
         p.rect(3, 3, 10, 6, skin)
         if facing == "down":
             p.rect(6, 10, 4, 1, shirt_d)
-            p.rect(5, 6, 1, 2, OUT)
-            p.rect(10, 6, 1, 2, OUT)
             p.put(4, 8, BLUSH)
             p.put(11, 8, BLUSH)
+            p.rect(5 + gx, 6 + gy, 1, 2, OUT)
+            p.rect(10 + gx, 6 + gy, 1, 2, OUT)
             p.rect(7, 9, 2, 1, skin_d)
             p.rect(3, 1, 10, 3, hair)
             p.rect(4, 0, 8, 1, hair)
@@ -639,7 +643,6 @@ def character(look, facing="down", frame=0):
         p.rect(arm_x, 15, 2, 1, skin)
         p.rect(4, 2, 8, 8, skin)
         p.rect(3, 4, 1, 4, skin)
-        p.rect(5, 5, 1, 2, OUT)
         p.put(5, 8, BLUSH)
         p.rect(4, 1, 8, 3, hair)
         p.rect(5, 0, 7, 1, hair)
@@ -648,6 +651,7 @@ def character(look, facing="down", frame=0):
         p.put(4, 4, hair)
         if style == "long":
             p.rect(9, 8, 4, 5, hair)
+        p.rect(5 + gx, 5 + gy, 1, 2, OUT)   # after the hair, so looking up isn't hidden by the fringe
     if style == "spiky":
         for x in (4, 7, 10):
             p.put(x, 0, None)
@@ -777,8 +781,10 @@ class Art:
     def bubble(self, kind):
         return self._get(("bubble", kind), lambda: bubble(kind))
 
-    def character(self, look_key, look, facing, frame):
-        return self._get(("char", look_key, facing, frame), lambda: character(look, facing, frame))
+    def character(self, look_key, look, facing, frame, gaze=(0, 0)):
+        if facing == "up":
+            gaze = (0, 0)  # eyes aren't visible from behind
+        return self._get(("char", look_key, facing, frame, gaze), lambda: character(look, facing, frame, gaze))
 
     def portrait(self, look_key, look, scale=6):
         return self._get(("portrait", look_key), lambda: character(look, "down", 0).crop(0, 0, 18, 17), scale)
